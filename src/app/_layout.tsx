@@ -1,16 +1,57 @@
-import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
-import React from 'react';
-import { useColorScheme } from 'react-native';
+import '../global.css';
 
-import { AnimatedSplashOverlay } from '@/components/animated-icon';
-import AppTabs from '@/components/app-tabs';
+import React, { useEffect, useState } from 'react';
+import { Provider } from 'react-redux';
+import { store } from '../store/store';
+import { Stack, useRouter, useSegments } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { View, ActivityIndicator } from 'react-native';
 
-export default function TabLayout() {
-  const colorScheme = useColorScheme();
+function RootLayoutNav() {
+  const router = useRouter();
+  const segments = useSegments();
+  const [isReady, setIsReady] = useState(false);
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const token = await AsyncStorage.getItem('token');
+        const inAuthGroup = segments[0] === '(auth)';
+        
+        if (!token && !inAuthGroup) {
+          router.replace('/(auth)/login');
+        } else if (token && inAuthGroup) {
+          router.replace('/(dashboard)');
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+         setIsReady(true);
+      }
+    };
+    checkAuth();
+  }, [segments]);
+
+  if (!isReady) {
+    return (
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+        <ActivityIndicator size="large" color="#2563EB" />
+      </View>
+    );
+  }
+
   return (
-    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-      <AnimatedSplashOverlay />
-      <AppTabs />
-    </ThemeProvider>
+    <Stack screenOptions={{ headerShown: false }}>
+      <Stack.Screen name="(auth)" options={{ headerShown: false }} />
+      <Stack.Screen name="(dashboard)" options={{ headerShown: false }} />
+    </Stack>
+  );
+}
+
+export default function RootLayout() {
+  return (
+    <Provider store={store}>
+      <RootLayoutNav />
+    </Provider>
   );
 }

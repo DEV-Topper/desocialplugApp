@@ -1,24 +1,25 @@
-import React, { useState } from 'react';
+import { useRouter } from "expo-router";
+import { Eye, EyeOff, Lock, Mail } from "lucide-react-native";
+import { useState } from "react";
 import {
-  View,
-  Text,
-  TextInput,
-  TouchableOpacity,
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   ScrollView,
-  ActivityIndicator,
-} from 'react-native';
-import { Mail, Lock, Eye, EyeOff } from 'lucide-react-native';
-import { useRouter } from 'expo-router';
-import { useLoginMutation } from '../../store/api/auth.api';
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from "react-native";
+import { useLoginMutation } from "../../store/api/auth.api";
+import React from "react";
 
 export default function LoginScreen() {
   const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  
+
   const [login, { isLoading }] = useLoginMutation();
 
   const handleLogin = async () => {
@@ -27,26 +28,24 @@ export default function LoginScreen() {
     try {
       const response = await login({ email, password }).unwrap();
       if (response.success) {
-        // Redux slice automatically handles token storage from the matcher
-        router.replace('/(dashboard)');
+        router.replace("/(dashboard)");
       } else {
-        alert(response.error || 'Login Failed');
+        alert(response.error || "Login Failed");
       }
     } catch (err: any) {
-      alert(err.data?.error || 'An unexpected error occurred');
+      console.debug({err})
+      alert(err.data?.error || "An unexpected error occurred");
     }
   };
 
   return (
-    <KeyboardAvoidingView 
-      className="flex-1 bg-white" 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    <KeyboardAvoidingView
+      className="flex-1 bg-white"
+      behavior={Platform.OS === "ios" ? "padding" : undefined}
     >
       <ScrollView contentContainerClassName="flex-grow justify-center px-6 py-12">
         <View className="mb-10 w-full max-w-md mx-auto">
-          <Text className="text-4xl font-bold text-gray-900 mb-3">
-            Login
-          </Text>
+          <Text className="text-4xl font-bold text-gray-900 mb-3">Login</Text>
           <Text className="text-gray-600 text-base leading-relaxed mb-8">
             Welcome back! Sign in to access your premium social media accounts.
           </Text>
@@ -104,7 +103,9 @@ export default function LoginScreen() {
                 <Text className="text-gray-600">Remember me</Text>
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => router.push('/(auth)/forgot-password')}>
+              <TouchableOpacity
+                onPress={() => router.push("/(auth)/forgot-password")}
+              >
                 <Text className="text-blue-600 font-semibold">
                   Forgot password?
                 </Text>
@@ -122,7 +123,7 @@ export default function LoginScreen() {
                 <ActivityIndicator color="#fff" className="mr-2" />
               ) : null}
               <Text className="text-white text-lg font-semibold tracking-wide">
-                {isLoading ? 'LOGGING IN...' : 'LOGIN \u2192'}
+                {isLoading ? "LOGGING IN..." : "LOGIN \u2192"}
               </Text>
             </TouchableOpacity>
 
@@ -134,8 +135,10 @@ export default function LoginScreen() {
 
             {/* Register Link */}
             <View className="flex-row justify-center mt-2">
-              <Text className="text-gray-600 text-base">Don't have an account? </Text>
-              <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+              <Text className="text-gray-600 text-base">
+                Don't have an account?{" "}
+              </Text>
+              <TouchableOpacity onPress={() => router.push("/(auth)/register")}>
                 <Text className="text-blue-600 font-semibold text-base">
                   Register
                 </Text>

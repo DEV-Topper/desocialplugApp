@@ -1,14 +1,38 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { View, Text, FlatList, ActivityIndicator } from 'react-native';
 import { useGetTransactionsQuery } from '../../store/api/user.api';
-import { ListFilter, ChevronLeft, ChevronRight } from 'lucide-react-native';
+import { ListFilter } from 'lucide-react-native';
 
 export default function TransactionsScreen() {
   const [page, setPage] = useState(1);
+  const [allTransactions, setAllTransactions] = useState<any[]>([]);
+  const [hasLoaded, setHasLoaded] = useState(false);
+
   const { data, isLoading, isFetching } = useGetTransactionsQuery(page);
 
   const transactions = data?.transactions || [];
   const pagination = data?.pagination;
+
+  React.useEffect(() => {
+    if (data) {
+      setHasLoaded(true);
+      if (page === 1) {
+        setAllTransactions(transactions);
+      } else {
+        setAllTransactions((prev) => {
+          const existingIds = new Set(prev.map((t: any) => t.id));
+          const newItems = transactions.filter((t: any) => !existingIds.has(t.id));
+          return [...prev, ...newItems];
+        });
+      }
+    }
+  }, [data]);
+
+  const handleLoadMore = useCallback(() => {
+    if (pagination?.hasNextPage && !isFetching) {
+      setPage((p) => p + 1);
+    }
+  }, [pagination?.hasNextPage, isFetching]);
 
   const formatDate = (dateStr: string) => {
     if (!dateStr) return 'N/A';
@@ -46,6 +70,27 @@ export default function TransactionsScreen() {
     </View>
   );
 
+  const renderFooter = () => {
+    if (!isFetching || allTransactions.length === 0) return null;
+    return (
+      <View className="py-4 items-center">
+        <ActivityIndicator size="small" color="#2563EB" />
+      </View>
+    );
+  };
+
+  const renderEmpty = () => {
+    if (isLoading || !hasLoaded) return null;
+    return (
+      <View className="flex-1 items-center justify-center pt-20">
+        <View className="bg-gray-100 p-6 rounded-full mb-4">
+          <ListFilter size={48} className="text-gray-400" />
+        </View>
+        <Text className="text-gray-900 text-lg font-bold">No Transactions</Text>
+      </View>
+    );
+  };
+
   return (
     <View className="flex-1 bg-gray-50 p-4">
       <View className="mb-6 flex-row justify-between items-center">
@@ -53,55 +98,25 @@ export default function TransactionsScreen() {
           <Text className="text-2xl font-bold text-gray-900">Transactions</Text>
           <Text className="text-gray-500 mt-1">All account activity.</Text>
         </View>
-        {isFetching && <ActivityIndicator color="#2563EB" />}
+        {isFetching && allTransactions.length === 0 && <ActivityIndicator color="#2563EB" />}
       </View>
 
-      {isLoading && transactions.length === 0 ? (
+      {isLoading && !hasLoaded ? (
         <View className="flex-1 justify-center items-center">
           <ActivityIndicator size="large" color="#2563EB" />
         </View>
-      ) : transactions.length === 0 ? (
-        <View className="flex-1 items-center justify-center">
-          <View className="bg-gray-100 p-6 rounded-full mb-4">
-            <ListFilter size={48} className="text-gray-400" />
-          </View>
-          <Text className="text-gray-900 text-lg font-bold">No Transactions</Text>
-        </View>
       ) : (
-        <View className="flex-1">
-          <FlatList
-            data={transactions}
-            keyExtractor={(item) => item.id}
-            renderItem={renderTransaction}
-            showsVerticalScrollIndicator={false}
-            contentContainerClassName="pb-4"
-          />
-
-          {/* Pagination Footer */}
-          {pagination && pagination.totalPages > 1 && (
-            <View className="flex-row items-center justify-between mt-4 py-4 border-t border-gray-200">
-              <TouchableOpacity 
-                disabled={!pagination.hasPrevPage || isFetching}
-                onPress={() => setPage((p) => Math.max(1, p - 1))}
-                className={`p-2 rounded-lg flex-row items-center ${pagination.hasPrevPage && !isFetching ? 'bg-white border border-gray-300' : 'bg-gray-100 opacity-50'}`}
-              >
-                <ChevronLeft size={20} color={pagination.hasPrevPage ? '#374151' : '#9ca3af'} />
-                <Text className={`font-medium ml-1 ${pagination.hasPrevPage ? 'text-gray-700' : 'text-gray-400'}`}>Prev</Text>
-              </TouchableOpacity>
-              
-              <Text className="text-gray-600 font-medium">Page {page} of {pagination.totalPages}</Text>
-
-              <TouchableOpacity 
-                disabled={!pagination.hasNextPage || isFetching}
-                onPress={() => setPage((p) => Math.min(pagination.totalPages, p + 1))}
-                className={`p-2 rounded-lg flex-row items-center ${pagination.hasNextPage && !isFetching ? 'bg-white border border-gray-300' : 'bg-gray-100 opacity-50'}`}
-              >
-                <Text className={`font-medium mr-1 ${pagination.hasNextPage ? 'text-gray-700' : 'text-gray-400'}`}>Next</Text>
-                <ChevronRight size={20} color={pagination.hasNextPage ? '#374151' : '#9ca3af'} />
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
+        <FlatList
+          data={allTransactions}
+          keyExtractor={(item) => item.id}
+          renderItem={renderTransaction}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
+          ListEmptyComponent={renderEmpty}
+          ListFooterComponent={renderFooter}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+        />
       )}
     </View>
   );

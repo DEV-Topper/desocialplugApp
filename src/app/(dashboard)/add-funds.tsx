@@ -1,9 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { useGetUserQuery } from '../../store/api/user.api';
 import { useGetVirtualAccountQuery, useCreateVirtualAccountMutation } from '../../store/api/funding.api';
-import { Wallet, Info, Copy, Check, Building2, User } from 'lucide-react-native';
+import { Wallet, Info, Copy, Check, Building2, User, XCircle } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+
+interface AlertState {
+  visible: boolean;
+  title: string;
+  message: string;
+}
+
+const defaultAlert: AlertState = { visible: false, title: '', message: '' };
 
 export default function AddFundsScreen() {
   const { data: userData } = useGetUserQuery();
@@ -19,6 +27,7 @@ export default function AddFundsScreen() {
 
   const virtualAccount = (virtualAccountData?.accountNumber && virtualAccountData?.bankName) ? virtualAccountData : null;
   const [showModal, setShowModal] = useState(false);
+  const [alert, setAlert] = useState<AlertState>(defaultAlert);
   
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -47,14 +56,13 @@ export default function AddFundsScreen() {
   const handleCreateVA = async (id: string, fName: string, lName: string, phn: string) => {
     try {
       if (!fName || !lName || !phn) {
-        Alert.alert('Error', 'Please fill in all fields');
+        setAlert({ visible: true, title: 'Error', message: 'Please fill in all fields' });
         return;
       }
       
       const res = await createVirtualAccount({
         userId: id,
-        bvn: '', // API takes firstName, lastName, phone in web version. Wait, API signature might need checking. 
-        // We'll pass them as any for now since the web body was: userId, firstName, lastName, phone.
+        bvn: '',
         firstName: fName,
         lastName: lName,
         phone: phn
@@ -64,10 +72,10 @@ export default function AddFundsScreen() {
         setShowModal(false);
         refetchVA();
       } else {
-        Alert.alert('Error', res.error || 'Failed to create virtual account');
+        setAlert({ visible: true, title: 'Error', message: res.error || 'Failed to create virtual account' });
       }
     } catch (err: any) {
-       Alert.alert('Error', err.data?.error || err.message || 'Failed to create virtual account');
+       setAlert({ visible: true, title: 'Error', message: err.data?.error || err.message || 'Failed to create virtual account' });
     }
   };
 
@@ -179,6 +187,22 @@ export default function AddFundsScreen() {
               className={`w-full mt-6 py-4 rounded-xl items-center ${isCreating ? 'bg-blue-400' : 'bg-blue-600'}`}
             >
               <Text className="text-white font-bold text-base">{isCreating ? 'Creating...' : 'Save & Continue'}</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Alert Modal */}
+      <Modal visible={alert.visible} transparent animationType="fade" onRequestClose={() => setAlert(defaultAlert)}>
+        <View className="flex-1 bg-black/50 items-center justify-center px-6">
+          <View className="bg-white rounded-2xl w-full max-w-sm p-6">
+            <View className="items-center mb-4">
+              <XCircle size={48} color="#dc2626" />
+            </View>
+            <Text className="text-xl font-bold text-gray-900 text-center mb-2">{alert.title}</Text>
+            <Text className="text-gray-500 text-center mb-6">{alert.message}</Text>
+            <TouchableOpacity onPress={() => setAlert(defaultAlert)} className="py-3 rounded-xl bg-blue-600 items-center">
+              <Text className="text-white font-semibold">OK</Text>
             </TouchableOpacity>
           </View>
         </View>

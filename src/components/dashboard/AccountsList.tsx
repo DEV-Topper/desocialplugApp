@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
 import { useGetAccountsQuery, usePurchaseAccountMutation } from '../../store/api/accounts.api';
 import { useGetUserQuery } from '../../store/api/user.api';
 import { 
@@ -12,12 +12,26 @@ import {
   Ghost, 
   Shield, 
   Mail,
-  MoreHorizontal 
+  MoreHorizontal,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
 } from 'lucide-react-native';
 
 interface AccountsListProps {
   selectedPlatform: string;
   selectedCategory: string;
+}
+
+interface ModalState {
+  visible: boolean;
+  type: 'info' | 'confirm' | 'result';
+  title: string;
+  message: string;
+  confirmText?: string;
+  cancelText?: string;
+  onConfirm?: () => void;
+  resultType?: 'success' | 'error';
 }
 
 const getPlatformIcon = (platform: string) => {
@@ -34,7 +48,6 @@ const getPlatformIcon = (platform: string) => {
   return MoreHorizontal;
 };
 
-// Simplified main platform logic from web
 const mainPlatforms = ['instagram', 'facebook', 'tiktok', 'x', 'twitter', 'linkedin', 'google', 'snapchat', 'vpn'];
 
 const getPlatformKeyForGrouping = (platform: string): string => {
@@ -50,11 +63,15 @@ const getPlatformKeyForGrouping = (platform: string): string => {
   return 'other';
 };
 
+const defaultModal: ModalState = { visible: false, type: 'info', title: '', message: '' };
+
 export function AccountsList({ selectedPlatform, selectedCategory }: AccountsListProps) {
   const { data, isLoading } = useGetAccountsQuery();
   const { data: userData } = useGetUserQuery();
   const [purchaseAccount, { isLoading: isPurchasing }] = usePurchaseAccountMutation();
-  
+  const [modal, setModal] = useState<ModalState>(defaultModal);
+  const [pendingAccount, setPendingAccount] = useState<any>(null);
+
   const accounts = data?.accounts || (Array.isArray(data) ? data : []);
   const userBalance = userData?.user?.walletBalance || 0;
 
@@ -86,34 +103,64 @@ export function AccountsList({ selectedPlatform, selectedCategory }: AccountsLis
     return platformMatch && categoryMatch;
   });
 
-  const handleBuy = async (account: any) => {
+  const closeModal = () => {
+    setModal(defaultModal);
+    setPendingAccount(null);
+  };
+
+  const handleBuy = (account: any) => {
     if (userBalance < account.price) {
-      Alert.alert('Insufficient Balance', `You need at least ₦${account.price} to purchase.\nYour balance: ₦${userBalance}`);
+      setModal({
+        visible: true,
+        type: 'info',
+        title: 'Insufficient Balance',
+        message: `You need at least ₦${account.price} to purchase.\nYour balance: ₦${userBalance}`,
+      });
       return;
     }
 
-    Alert.alert(
-      'Confirm Purchase',
-      `Are you sure you want to buy 1 log of ${account.platform} for ₦${account.price}?`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Buy',
-          onPress: async () => {
-            try {
-              const res = await purchaseAccount({ accountId: account.id, quantity: 1 }).unwrap();
-              if (res.success) {
-                Alert.alert('Success', 'Account purchased successfully!');
-              } else {
-                Alert.alert('Error', res.error || 'Failed to purchase');
-              }
-            } catch (err: any) {
-              Alert.alert('Error', err.data?.error || 'An unexpected error occurred');
-            }
-          }
-        }
-      ]
-    );
+    setPendingAccount(account);
+    setModal({
+      visible: true,
+      type: 'confirm',
+      title: 'Confirm Purchase',
+      message: `Are you sure you want to buy 1 log of ${account.platform} for ₦${account.price}?`,
+      confirmText: 'Buy',
+      cancelText: 'Cancel',
+      onConfirm: () => executePurchase(account),
+    });
+  };
+
+  const executePurchase = async (account: any) => {
+    closeModal();
+    try {
+      const res = await purchaseAccount({ accountId: account.id, quantity: 1 }).unwrap();
+      if (res.success) {
+        setModal({
+          visible: true,
+          type: 'result',
+          title: 'Success',
+          message: 'Account purchased successfully!',
+          resultType: 'success',
+        });
+      } else {
+        setModal({
+          visible: true,
+          type: 'result',
+          title: 'Error',
+          message: res.error || 'Failed to purchase',
+          resultType: 'error',
+        });
+      }
+    } catch (err: any) {
+      setModal({
+        visible: true,
+        type: 'result',
+        title: 'Error',
+        message: err.data?.error || 'An unexpected error occurred',
+        resultType: 'error',
+      });
+    }
   };
 
   if (isLoading) {
@@ -180,13 +227,61 @@ export function AccountsList({ selectedPlatform, selectedCategory }: AccountsLis
   };
 
   return (
-    <FlatList
-      data={filteredAccounts}
-      keyExtractor={(item) => item.id || Math.random().toString()}
-      renderItem={renderItem}
-      showsVerticalScrollIndicator={false}
-      initialNumToRender={10}
-      contentContainerClassName="pb-10"
-    />
+    <>
+      <View>
+        {filteredAccounts.map((item: any) => (
+          <View key={item.id || Math.random().toString()}>
+            {renderItem({ item })}
+          </View>
+        ))}
+      </View>
+
+      <Modal visible={modal.visible} transparent animationType="fade" onRequestClose={closeModal}>
+        <View className="flex-1 bg-black/50 items-center justify-center px-6">
+          <View className="bg-white rounded-2xl w-full max-w-sm p-6">
+            <View className="items-center mb-4">
+              {modal.resultType === 'success' ? (
+                <CheckCircle size={48} color="#16a34a" />
+              ) : modal.resultType === 'error' ? (
+                <XCircle size={48} color="#dc2626" />
+              ) : (
+                <AlertCircle size={48} color="#2563eb" />
+              )}
+            </View>
+
+            <Text className="text-xl font-bold text-gray-900 text-center mb-2">{modal.title}</Text>
+            <Text className="text-gray-500 text-center mb-6">{modal.message}</Text>
+
+            {modal.type === 'confirm' ? (
+              <View className="flex-row gap-3">
+                <TouchableOpacity
+                  onPress={closeModal}
+                  className="flex-1 py-3 rounded-xl bg-gray-100 items-center"
+                >
+                  <Text className="text-gray-700 font-semibold">{modal.cancelText || 'Cancel'}</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  onPress={() => {
+                    const confirm = modal.onConfirm;
+                    closeModal();
+                    confirm?.();
+                  }}
+                  className="flex-1 py-3 rounded-xl bg-blue-600 items-center"
+                >
+                  <Text className="text-white font-semibold">{modal.confirmText || 'OK'}</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                onPress={closeModal}
+                className="py-3 rounded-xl bg-blue-600 items-center"
+              >
+                <Text className="text-white font-semibold">OK</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }

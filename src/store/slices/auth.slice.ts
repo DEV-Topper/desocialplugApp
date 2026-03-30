@@ -45,9 +45,20 @@ const authSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
-    // We can also match the generic authApi endpoints here if they return token
     builder.addMatcher(
       authApi.endpoints.login.matchFulfilled,
+      (state, { payload }) => {
+        if (payload.success && payload.token) {
+          state.token = payload.token;
+          state.user = payload.user;
+          state.isAuthenticated = true;
+          AsyncStorage.setItem('token', payload.token);
+          AsyncStorage.setItem('user', JSON.stringify(payload.user));
+        }
+      }
+    );
+    builder.addMatcher(
+      authApi.endpoints.register.matchFulfilled,
       (state, { payload }) => {
         if (payload.success && payload.token) {
           state.token = payload.token;

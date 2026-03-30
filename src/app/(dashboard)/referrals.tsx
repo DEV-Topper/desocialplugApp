@@ -1,8 +1,17 @@
 import React, { useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput, Alert } from 'react-native';
+import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
 import { useGetReferralsQuery, useGetWithdrawalsQuery, useRequestWithdrawalMutation } from '../../store/api/user.api';
-import { Users, Copy, Check, CreditCard } from 'lucide-react-native';
+import { Users, Copy, Check, CreditCard, CheckCircle, XCircle, AlertCircle } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+
+interface AlertState {
+  visible: boolean;
+  title: string;
+  message: string;
+  type?: 'success' | 'error';
+}
+
+const defaultAlert: AlertState = { visible: false, title: '', message: '' };
 
 export default function ReferralsScreen() {
   const { data: userData, isLoading: isLoadingUser, refetch: refetchUser } = useGetReferralsQuery();
@@ -17,6 +26,7 @@ export default function ReferralsScreen() {
   const [withdrawAccountNumber, setWithdrawAccountNumber] = useState('');
   const [withdrawAccountName, setWithdrawAccountName] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
+  const [alert, setAlert] = useState<AlertState>(defaultAlert);
 
   const referralData = userData?.data || { referrals: [], referralBalance: 0, referralCode: '' };
   const withdrawalRequests = withdrawalsData?.requests || [];
@@ -28,18 +38,22 @@ export default function ReferralsScreen() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const showAlert = (title: string, message: string, type: 'success' | 'error' = 'error') => {
+    setAlert({ visible: true, title, message, type });
+  };
+
   const handleWithdraw = async () => {
     const amount = Number(withdrawAmount);
     if (!withdrawBank || !withdrawAccountNumber || !withdrawAccountName) {
-      Alert.alert('Error', 'Please fill in all bank details.');
+      showAlert('Error', 'Please fill in all bank details.');
       return;
     }
     if (isNaN(amount) || amount < 1000) {
-      Alert.alert('Error', 'Minimum withdrawal amount is ₦1,000.');
+      showAlert('Error', 'Minimum withdrawal amount is ₦1,000.');
       return;
     }
     if (amount > referralData.referralBalance) {
-      Alert.alert('Error', 'Requested amount exceeds your referral balance.');
+      showAlert('Error', 'Requested amount exceeds your referral balance.');
       return;
     }
 
@@ -54,15 +68,15 @@ export default function ReferralsScreen() {
       } as any).unwrap();
 
       if (res.success) {
-        Alert.alert('Success', 'Withdrawal request submitted.');
+        showAlert('Success', 'Withdrawal request submitted.', 'success');
         setShowWithdrawModal(false);
         refetchUser();
         refetchWithdrawals();
       } else {
-        Alert.alert('Error', res.error || 'Failed to submit request');
+        showAlert('Error', res.error || 'Failed to submit request');
       }
     } catch (err: any) {
-      Alert.alert('Error', err.data?.error || 'Failed to submit request');
+      showAlert('Error', err.data?.error || 'Failed to submit request');
     }
   };
 
@@ -217,6 +231,26 @@ export default function ReferralsScreen() {
                 <Text className="text-white font-bold">Submit</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Alert Modal */}
+      <Modal visible={alert.visible} transparent animationType="fade" onRequestClose={() => setAlert(defaultAlert)}>
+        <View className="flex-1 bg-black/50 items-center justify-center px-6">
+          <View className="bg-white rounded-2xl w-full max-w-sm p-6">
+            <View className="items-center mb-4">
+              {alert.type === 'success' ? (
+                <CheckCircle size={48} color="#16a34a" />
+              ) : (
+                <XCircle size={48} color="#dc2626" />
+              )}
+            </View>
+            <Text className="text-xl font-bold text-gray-900 text-center mb-2">{alert.title}</Text>
+            <Text className="text-gray-500 text-center mb-6">{alert.message}</Text>
+            <TouchableOpacity onPress={() => setAlert(defaultAlert)} className="py-3 rounded-xl bg-blue-600 items-center">
+              <Text className="text-white font-semibold">OK</Text>
+            </TouchableOpacity>
           </View>
         </View>
       </Modal>

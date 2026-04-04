@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, FlatList, TouchableOpacity, ActivityIndicator, Modal, ScrollView, Alert } from 'react-native';
-import { useGetPurchasesQuery } from '../../store/api/user.api';
-import { ShoppingBag, X, Copy, Check } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+import { Check, Copy, ShoppingBag, X } from 'lucide-react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, FlatList, Modal, ScrollView, Text, TouchableOpacity, View } from 'react-native';
+import { useGetPurchasesQuery } from '../../store/api/user.api';
 
 export default function PurchasesScreen() {
   const { data, isLoading } = useGetPurchasesQuery();
   const purchases = data?.purchases || [];
   const totalSpent = purchases.reduce((sum: number, p: any) => sum + (p.totalAmount || 0), 0);
-  
+
   const [selectedPurchase, setSelectedPurchase] = useState<any>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
@@ -124,7 +124,7 @@ export default function PurchasesScreen() {
               <View className="flex-row justify-between items-center mb-4">
                 <Text className="font-bold text-gray-900">Credentials ({selectedPurchase?.credentials?.length || 0})</Text>
                 {selectedPurchase?.credentials?.length > 0 && (
-                  <TouchableOpacity 
+                  <TouchableOpacity
                     onPress={() => {
                       const allText = selectedPurchase.credentials
                         .map((cred: any, idx: number) => `Log ${idx + 1}:\n${getCredentialText(cred)}`)
@@ -145,7 +145,7 @@ export default function PurchasesScreen() {
                   return (
                     <View key={idx} className="bg-gray-50 border border-gray-200 rounded-lg p-3 mb-3 relative">
                       <Text className="text-gray-800 font-mono text-sm leading-5 pr-8">{credText}</Text>
-                      <TouchableOpacity 
+                      <TouchableOpacity
                         onPress={() => copyToClipboard(credText, idx)}
                         className="absolute right-3 top-3 p-1.5 bg-white rounded-md border border-gray-200"
                       >

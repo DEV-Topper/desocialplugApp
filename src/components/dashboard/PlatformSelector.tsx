@@ -1,17 +1,17 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import {
-  Camera,
-  MessageSquare,
-  Music,
-  Hash,
   Briefcase,
-  Mic,
+  Camera,
   Ghost,
-  Shield,
-  MoreHorizontal,
+  Hash,
   LayoutGrid,
+  MessageSquare,
+  Mic,
+  MoreHorizontal,
+  Music,
+  Shield,
 } from 'lucide-react-native';
+import React from 'react';
+import { Text, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { COLORS } from '../../constants/theme';
 
 const platforms = [
@@ -24,7 +24,7 @@ const platforms = [
   { id: 'google', name: 'Google Voice', icon: Mic },
   { id: 'snapchat', name: 'Snapchat', icon: Ghost },
   { id: 'vpn', name: 'VPN', icon: Shield },
-  { id: 'other', name: 'Other', icon: MoreHorizontal },
+  { id: 'other', name: 'Other Platforms', icon: MoreHorizontal },
 ];
 
 interface PlatformSelectorProps {
@@ -33,15 +33,40 @@ interface PlatformSelectorProps {
 }
 
 export function PlatformSelector({ selectedPlatform, onPlatformChange }: PlatformSelectorProps) {
+  const { width } = useWindowDimensions();
+
+  // Responsive columns: mobile (2), tablet (3), desktop/large (5)
+  let columns = 2;
+  if (width >= 768) columns = 3;
+  if (width >= 1024) columns = 5;
+
+  // Responsive sizes
+  const isLarge = width >= 768;
+  const isDesktop = width >= 1024;
+
+  const buttonPaddingVertical = isLarge ? 12 : 8;
+  const buttonPaddingHorizontal = isLarge ? 16 : 10;
+  const gap = isLarge ? 12 : 8;
+  const iconSize = isLarge ? 18 : 14;
+  const fontSize = isLarge ? 14 : 12;
+  const borderRadius = isLarge ? 12 : 10;
+  const titleFontSize = isLarge ? 16 : 15;
+  const titleMarginBottom = isLarge ? 16 : 12;
+
+  // Calculate item width based on columns and gap
+  const totalGap = gap * (columns - 1);
+  const itemWidth = (width - totalGap - 32) / columns; // 32 = horizontal padding (16*2)
+
   return (
     <View style={{ marginBottom: 20 }}>
+      {/* Section title with bottom border */}
       <Text
         style={{
-          fontSize: 15,
+          fontSize: titleFontSize,
           fontWeight: '700',
           color: COLORS.textPrimary,
-          marginBottom: 12,
-          paddingBottom: 10,
+          marginBottom: titleMarginBottom,
+          paddingBottom: 8,
           borderBottomWidth: 1,
           borderBottomColor: COLORS.cardBorder,
         }}
@@ -49,48 +74,65 @@ export function PlatformSelector({ selectedPlatform, onPlatformChange }: Platfor
         Shop by Categories
       </Text>
 
-      {/* Two-column grid matching web */}
-      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+      {/* Responsive grid using flexWrap */}
+      <View
+        style={{
+          flexDirection: 'row',
+          flexWrap: 'wrap',
+          marginHorizontal: -gap / 2,
+        }}
+      >
         {platforms.map((platform) => {
           const Icon = platform.icon;
           const isSelected = selectedPlatform === platform.id;
 
           return (
-            <TouchableOpacity
+            <View
               key={platform.id}
-              onPress={() => onPlatformChange(platform.id)}
               style={{
-                flexDirection: 'row',
-                alignItems: 'center',
-                justifyContent: 'center',
-                gap: 6,
-                paddingVertical: 10,
-                paddingHorizontal: 14,
-                borderRadius: 12,
-                borderWidth: 1.5,
-                backgroundColor: isSelected ? COLORS.primary : COLORS.white,
-                borderColor: isSelected ? COLORS.primary : COLORS.cardBorder,
-                minWidth: '45%',
-                flex: 1,
-                shadowColor: isSelected ? COLORS.primary : '#000',
-                shadowOffset: { width: 0, height: isSelected ? 2 : 1 },
-                shadowOpacity: isSelected ? 0.18 : 0.04,
-                shadowRadius: isSelected ? 6 : 2,
-                elevation: isSelected ? 4 : 1,
+                width: itemWidth,
+                marginHorizontal: gap / 2,
+                marginBottom: gap,
               }}
             >
-              <Icon size={16} color={isSelected ? '#fff' : COLORS.textSecondary} strokeWidth={2} />
-              <Text
+              <TouchableOpacity
+                onPress={() => onPlatformChange(platform.id)}
+                activeOpacity={0.7}
                 style={{
-                  fontSize: 13,
-                  fontWeight: '600',
-                  color: isSelected ? '#fff' : COLORS.textPrimary,
+                  flexDirection: 'row',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: isLarge ? 8 : 6,
+                  paddingVertical: buttonPaddingVertical,
+                  paddingHorizontal: buttonPaddingHorizontal,
+                  borderRadius: borderRadius,
+                  borderWidth: 1.5,
+                  backgroundColor: isSelected ? COLORS.primary : '#fff',
+                  borderColor: isSelected ? COLORS.primary : COLORS.cardBorder,
+                  shadowColor: isSelected ? COLORS.primary : '#000',
+                  shadowOffset: { width: 0, height: isSelected ? 2 : 1 },
+                  shadowOpacity: isSelected ? 0.12 : 0.04,
+                  shadowRadius: isSelected ? 6 : 2,
+                  elevation: isSelected ? 3 : 1,
                 }}
-                numberOfLines={1}
               >
-                {platform.name}
-              </Text>
-            </TouchableOpacity>
+                <Icon
+                  size={iconSize}
+                  color={isSelected ? '#fff' : COLORS.textSecondary}
+                  strokeWidth={2}
+                />
+                <Text
+                  style={{
+                    fontSize: fontSize,
+                    fontWeight: '600',
+                    color: isSelected ? '#fff' : COLORS.textPrimary,
+                  }}
+                  numberOfLines={1}
+                >
+                  {platform.name}
+                </Text>
+              </TouchableOpacity>
+            </View>
           );
         })}
       </View>

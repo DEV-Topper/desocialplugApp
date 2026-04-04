@@ -86,7 +86,7 @@ export default function ReferralsScreen() {
 
   return (
     <View className="flex-1 bg-gray-50">
-      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false}>
+      <ScrollView className="flex-1 p-4" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
         <Text className="text-2xl font-bold text-gray-900 mb-6">Referral Program</Text>
 
         {/* Stats */}

@@ -14,6 +14,25 @@ export const fundingApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['Funds'],
     }),
+    createCryptoPayment: builder.mutation<
+      any,
+      {
+        userId: string;
+        userName: string;
+        userEmail: string;
+        amount: number;
+        currency?: string;
+        callbackUrl: string;
+        returnUrl: string;
+      }
+    >({
+      query: (data) => ({
+        url: '/payments/heleket-payment',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Funds'],
+    }),
   }),
   overrideExisting: false,
 });
@@ -21,4 +40,5 @@ export const fundingApi = baseApi.injectEndpoints({
 export const {
   useGetVirtualAccountQuery,
   useCreateVirtualAccountMutation,
+  useCreateCryptoPaymentMutation,
 } = fundingApi;

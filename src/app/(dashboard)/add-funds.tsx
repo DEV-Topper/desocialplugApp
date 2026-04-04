@@ -1,9 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator, Modal, TextInput } from 'react-native';
-import { useGetUserQuery } from '../../store/api/user.api';
-import { useGetVirtualAccountQuery, useCreateVirtualAccountMutation } from '../../store/api/funding.api';
-import { Wallet, Info, Copy, Check, Building2, User, XCircle } from 'lucide-react-native';
 import * as Clipboard from 'expo-clipboard';
+import { useLocalSearchParams } from 'expo-router';
+import { Building2, Check, Copy, Info, User, Wallet, XCircle } from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Modal, ScrollView, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { CryptoPayment } from '../../components/CryptoPayment';
+import { PaymentMethodSelector } from '../../components/PaymentMethodSelector';
+import { useCreateVirtualAccountMutation, useGetVirtualAccountQuery } from '../../store/api/funding.api';
+import { useGetUserQuery } from '../../store/api/user.api';
 
 interface AlertState {
   visible: boolean;
@@ -15,6 +18,7 @@ const defaultAlert: AlertState = { visible: false, title: '', message: '' };
 
 export default function AddFundsScreen() {
   const { data: userData } = useGetUserQuery();
+  const { method } = useLocalSearchParams<{ method?: string }>();
   const userId = userData?.user?._id;
   const username = userData?.user?.username || '';
   const userPhone = userData?.user?.phone || '';
@@ -33,10 +37,22 @@ export default function AddFundsScreen() {
   const [lastName, setLastName] = useState('');
   const [phone, setPhone] = useState('');
   const [copied, setCopied] = useState(false);
+  
+  // Payment method state - initialize from route parameter
+  const initialMethod = method as 'bank' | 'crypto' | null;
+  const [paymentMethod, setPaymentMethod] = useState<'bank' | 'crypto' | null>(initialMethod);
+  const [showSelectorModal, setShowSelectorModal] = useState(false);
+
+  // Update payment method when route parameter changes
+  useEffect(() => {
+    if (method) {
+      setPaymentMethod(method as 'bank' | 'crypto');
+    }
+  }, [method]);
 
   useEffect(() => {
     if (userData?.user && !isLoadingVA) {
-      if (!virtualAccount) {
+      if (!virtualAccount && paymentMethod === 'bank') {
         const parts = username.split(' ').filter(Boolean);
         const fName = parts[0] || '';
         const lName = parts.slice(1).join(' ') || '';
@@ -51,7 +67,16 @@ export default function AddFundsScreen() {
         }
       }
     }
-  }, [userData, isLoadingVA, virtualAccount, username, userId, userPhone]);
+  }, [userData, isLoadingVA, virtualAccount, username, userId, userPhone, paymentMethod]);
+
+  // Show selector modal when no payment method is selected
+  useEffect(() => {
+    if (!paymentMethod) {
+      setShowSelectorModal(true);
+    } else {
+      setShowSelectorModal(false);
+    }
+  }, [paymentMethod]);
 
   const handleCreateVA = async (id: string, fName: string, lName: string, phn: string) => {
     try {
@@ -86,107 +111,206 @@ export default function AddFundsScreen() {
   };
 
   return (
-    <ScrollView className="flex-1 bg-gray-50 px-4 pt-6">
-      <View className="items-center mb-8">
-        <View className="bg-blue-100 p-4 rounded-full mb-3 shadow-sm">
-          <Wallet size={32} className="text-blue-600" />
+    <ScrollView style={{ flex: 1, backgroundColor: '#F9FAFB', paddingHorizontal: 16, paddingTop: 56 }} contentContainerStyle={{ paddingBottom: 120 }} showsVerticalScrollIndicator={false}>
+      {/* Header */}
+      <View style={{ alignItems: 'center', marginBottom: 32 }}>
+        <View style={{ backgroundColor: '#DBEAFE', padding: 16, borderRadius: 12, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2 }}>
+          <Wallet size={32} color="#2563EB" />
         </View>
-        <Text className="text-3xl font-bold text-gray-900">Add Funds</Text>
-        <Text className="text-gray-500 mt-1">Top up your virtual wallet instantly</Text>
+        <Text style={{ fontSize: 28, fontWeight: '700', color: '#111827' }}>Add Funds</Text>
+        <Text style={{ fontSize: 14, color: '#6B7280', marginTop: 4 }}>
+          {paymentMethod ? 'Complete your payment' : 'Choose your payment method'}
+        </Text>
       </View>
 
-      {(isLoadingVA || (userId && !virtualAccount && !showModal)) ? (
-        <View className="bg-white rounded-2xl p-10 shadow-sm border border-gray-100 items-center">
-          <ActivityIndicator size="large" color="#2563EB" className="mb-4" />
-          <Text className="text-gray-600 font-medium">Setting up your virtual account...</Text>
-        </View>
-      ) : virtualAccount ? (
-        <View className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-8">
-          <View className="bg-blue-600 p-5">
-            <Text className="text-white text-lg font-bold">Fund Your Wallet</Text>
-            <Text className="text-blue-100 text-sm mt-1">You will be charged a 0.9% fee for each recharge.</Text>
-          </View>
-          
-          <View className="p-5">
-            <View className="bg-blue-50 p-3 rounded-lg flex-row items-center mb-5">
-              <Info size={20} className="text-blue-600 mr-2" />
-              <Text className="text-sm text-blue-800 font-medium flex-1">Transfer to the virtual account number below</Text>
+      {/* Payment Method Selector Modal */}
+      <Modal
+        visible={showSelectorModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowSelectorModal(false)}
+      >
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'flex-end' }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingTop: 32 }}>
+            <View style={{ alignItems: 'center', marginBottom: 24 }}>
+              <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827' }}>
+                Choose Payment Method
+              </Text>
             </View>
+            <PaymentMethodSelector
+              onSelectBank={() => {
+                setShowSelectorModal(false);
+                setPaymentMethod('bank');
+              }}
+              onSelectCrypto={() => {
+                setShowSelectorModal(false);
+                setPaymentMethod('crypto');
+              }}
+            />
+            <TouchableOpacity
+              onPress={() => setShowSelectorModal(false)}
+              style={{ marginTop: 24, paddingVertical: 12 }}
+            >
+              <Text style={{ textAlign: 'center', color: '#6B7280', fontWeight: '600' }}>
+                Cancel
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
-            <View className="mb-4">
-              <Text className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-wider">Account Number</Text>
-              <View className="flex-row items-center justify-between bg-gray-50 p-3 rounded-xl border border-gray-200">
-                <Text className="text-xl font-bold text-gray-900 tracking-widest">{virtualAccount.accountNumber}</Text>
-                <TouchableOpacity 
-                  onPress={() => copyToClipboard(virtualAccount.accountNumber)}
-                  className="flex-row items-center bg-blue-100 px-3 py-2 rounded-lg"
+      {/* Bank Transfer View */}
+      {paymentMethod === 'bank' && (
+        <>
+          {(isLoadingVA || (userId && !virtualAccount && !showModal)) ? (
+            <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 40, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, alignItems: 'center' }}>
+              <ActivityIndicator size="large" color="#2563EB" style={{ marginBottom: 16 }} />
+              <Text style={{ color: '#4B5563', fontWeight: '600', fontSize: 16 }}>Setting up your virtual account...</Text>
+            </View>
+          ) : virtualAccount ? (
+            <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, overflow: 'hidden', marginBottom: 32 }}>
+              <View style={{ backgroundColor: '#2563EB', padding: 20 }}>
+                <Text style={{ color: '#FFFFFF', fontSize: 18, fontWeight: '700' }}>Fund Your Wallet</Text>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.7)', fontSize: 13, marginTop: 4 }}>You will be charged a 0.9% fee for each recharge.</Text>
+              </View>
+              
+              <View style={{ padding: 20 }}>
+                <View style={{ backgroundColor: '#F0F9FF', padding: 12, borderRadius: 8, flexDirection: 'row', alignItems: 'center', marginBottom: 20, borderWidth: 1, borderColor: '#93C5FD' }}>
+                  <Info size={20} color="#2563EB" style={{ marginRight: 12 }} />
+                  <Text style={{ fontSize: 13, color: '#1E40AF', fontWeight: '500', flex: 1 }}>Transfer to the virtual account number below</Text>
+                </View>
+
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 11, color: '#6B7280', fontWeight: '700', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Account Number</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                    <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', letterSpacing: 2 }}>{virtualAccount.accountNumber}</Text>
+                    <TouchableOpacity 
+                      onPress={() => copyToClipboard(virtualAccount.accountNumber)}
+                      style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#DBEAFE', paddingHorizontal: 12, paddingVertical: 8, borderRadius: 8 }}
+                    >
+                      {copied ? <Check size={16} color="#16A34A" style={{ marginRight: 6 }} /> : <Copy size={16} color="#2563EB" style={{ marginRight: 6 }} />}
+                      <Text style={{ fontWeight: '600', color: copied ? '#16A34A' : '#2563EB', fontSize: 13 }}>{copied ? 'Copied!' : 'Copy'}</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={{ fontSize: 11, color: '#6B7280', fontWeight: '700', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Bank Name</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                    <View style={{ backgroundColor: '#FFFFFF', padding: 8, borderRadius: 100, marginRight: 12, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                      <Building2 size={20} color="#4B5563" />
+                    </View>
+                    <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827' }}>{virtualAccount.bankName}</Text>
+                  </View>
+                </View>
+
+                <View style={{ marginBottom: 8 }}>
+                  <Text style={{ fontSize: 11, color: '#6B7280', fontWeight: '700', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Account Name</Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: '#F9FAFB', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                    <View style={{ backgroundColor: '#FFFFFF', padding: 8, borderRadius: 100, marginRight: 12, borderWidth: 1, borderColor: '#E5E7EB' }}>
+                      <User size={20} color="#4B5563" />
+                    </View>
+                    <Text style={{ fontSize: 14, fontWeight: '700', color: '#111827' }}>{virtualAccount.accountName}</Text>
+                  </View>
+                </View>
+                
+                <Text style={{ textAlign: 'center', fontSize: 12, color: '#9CA3AF', marginTop: 16 }}>Funds reflect instantly after transfer.</Text>
+              </View>
+
+              {/* Back Button */}
+              <View style={{ borderTopWidth: 1, borderTopColor: '#E5E7EB', padding: 16 }}>
+                <TouchableOpacity
+                  onPress={() => setPaymentMethod(null)}
+                  style={{ paddingVertical: 12, paddingHorizontal: 16, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB', alignItems: 'center' }}
                 >
-                  {copied ? <Check size={16} className="text-green-600 mr-1" /> : <Copy size={16} className="text-blue-600 mr-1" />}
-                  <Text className={`font-medium ${copied ? 'text-green-700' : 'text-blue-700'}`}>{copied ? 'Copied!' : 'Copy'}</Text>
+                  <Text style={{ color: '#6B7280', fontWeight: '600', fontSize: 14 }}>Back to Payment Methods</Text>
                 </TouchableOpacity>
               </View>
             </View>
-
-            <View className="mb-4">
-              <Text className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-wider">Bank Name</Text>
-              <View className="flex-row items-center bg-gray-50 p-3 rounded-xl border border-gray-200">
-                <View className="bg-white p-2 rounded-full mr-3 border border-gray-100">
-                  <Building2 size={20} className="text-gray-600" />
-                </View>
-                <Text className="text-lg font-bold text-gray-900">{virtualAccount.bankName}</Text>
-              </View>
+          ) : (
+            <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, padding: 32, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, alignItems: 'center' }}>
+                <XCircle size={48} color="#DC2626" style={{ marginBottom: 16 }} />
+                <Text style={{ color: '#6B7280', marginBottom: 16, textAlign: 'center', fontSize: 14 }}>Unable to load Virtual Account.</Text>
+                <TouchableOpacity onPress={refetchVA} style={{ backgroundColor: '#2563EB', paddingHorizontal: 24, paddingVertical: 12, borderRadius: 12 }}>
+                  <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>Try Again</Text>
+                </TouchableOpacity>
             </View>
+          )}
+        </>
+      )}
 
-            <View className="mb-2">
-              <Text className="text-xs text-gray-500 font-bold mb-1 uppercase tracking-wider">Account Name</Text>
-              <View className="flex-row items-center bg-gray-50 p-3 rounded-xl border border-gray-200">
-                <View className="bg-white p-2 rounded-full mr-3 border border-gray-100">
-                  <User size={20} className="text-gray-600" />
-                </View>
-                <Text className="text-base font-bold text-gray-900">{virtualAccount.accountName}</Text>
-              </View>
-            </View>
-            
-            <Text className="text-center text-xs text-gray-400 mt-4">Funds reflect instantly after transfer.</Text>
-          </View>
-        </View>
-      ) : (
-        <View className="bg-white rounded-2xl p-8 shadow-sm border border-gray-100 items-center">
-            <Text className="text-gray-500 mb-4 text-center">Unable to load Virtual Account.</Text>
-            <TouchableOpacity onPress={refetchVA} className="bg-blue-600 px-6 py-3 rounded-xl">
-              <Text className="text-white font-bold">Try Again</Text>
-            </TouchableOpacity>
+      {/* Crypto Payment View */}
+      {paymentMethod === 'crypto' && userData?.user && (
+        <View style={{ marginBottom: 32 }}>
+          <CryptoPayment
+            userId={userData.user._id}
+            userName={userData.user.username}
+            userEmail={userData.user.email}
+            onSuccess={() => {
+              setAlert({
+                visible: true,
+                title: 'Success',
+                message: 'Payment completed successfully! Your funds will be added shortly.',
+              });
+              setTimeout(() => {
+                setPaymentMethod(null);
+              }, 2000);
+            }}
+            onBack={() => setPaymentMethod(null)}
+            usdToNgnRate={1500}
+          />
         </View>
       )}
 
-      {/* Modal required missing info */}
+      {/* Modal for missing info */}
       <Modal visible={showModal} animationType="slide" transparent>
-        <View className="flex-1 bg-black/50 justify-center items-center p-4">
-          <View className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl">
-            <Text className="text-xl font-bold text-gray-900 mb-2">Confirm your details</Text>
-            <Text className="text-sm text-gray-500 mb-6">Please provide these details to create your virtual funding account.</Text>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 16 }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, width: '100%', padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8 }}>
+            <Text style={{ fontSize: 18, fontWeight: '700', color: '#111827', marginBottom: 8 }}>Confirm your details</Text>
+            <Text style={{ fontSize: 13, color: '#6B7280', marginBottom: 24 }}>Please provide these details to create your virtual funding account.</Text>
 
-            <View className="space-y-4">
+            <View style={{ gap: 16 }}>
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-1">First Name</Text>
-                <TextInput value={firstName} onChangeText={setFirstName} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900" placeholder="John" />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>First Name</Text>
+                <TextInput 
+                  value={firstName} 
+                  onChangeText={setFirstName} 
+                  style={{ width: '100%', backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 12, color: '#111827', fontSize: 16 }} 
+                  placeholder="John" 
+                  placeholderTextColor="#9CA3AF"
+                />
               </View>
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-1">Last Name</Text>
-                <TextInput value={lastName} onChangeText={setLastName} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900" placeholder="Doe" />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Last Name</Text>
+                <TextInput 
+                  value={lastName} 
+                  onChangeText={setLastName} 
+                  style={{ width: '100%', backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 12, color: '#111827', fontSize: 16 }} 
+                  placeholder="Doe" 
+                  placeholderTextColor="#9CA3AF"
+                />
               </View>
               <View>
-                <Text className="text-sm font-medium text-gray-700 mb-1">Phone Number</Text>
-                <TextInput value={phone} onChangeText={setPhone} keyboardType="phone-pad" className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-gray-900" placeholder="08012345678" />
+                <Text style={{ fontSize: 13, fontWeight: '600', color: '#374151', marginBottom: 6 }}>Phone Number</Text>
+                <TextInput 
+                  value={phone} 
+                  onChangeText={setPhone} 
+                  keyboardType="phone-pad" 
+                  style={{ width: '100%', backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 8, paddingHorizontal: 16, paddingVertical: 12, color: '#111827', fontSize: 16 }} 
+                  placeholder="08012345678" 
+                  placeholderTextColor="#9CA3AF"
+                />
               </View>
             </View>
 
             <TouchableOpacity 
               onPress={() => userId && handleCreateVA(userId, firstName, lastName, phone)}
               disabled={isCreating}
-              className={`w-full mt-6 py-4 rounded-xl items-center ${isCreating ? 'bg-blue-400' : 'bg-blue-600'}`}
+              style={{ width: '100%', marginTop: 24, paddingVertical: 14, borderRadius: 8, backgroundColor: isCreating ? '#93C5FD' : '#2563EB', alignItems: 'center' }}
             >
-              <Text className="text-white font-bold text-base">{isCreating ? 'Creating...' : 'Save & Continue'}</Text>
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 16 }}>
+                {isCreating ? 'Creating...' : 'Save & Continue'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -194,15 +318,16 @@ export default function AddFundsScreen() {
 
       {/* Alert Modal */}
       <Modal visible={alert.visible} transparent animationType="fade" onRequestClose={() => setAlert(defaultAlert)}>
-        <View className="flex-1 bg-black/50 items-center justify-center px-6">
-          <View className="bg-white rounded-2xl w-full max-w-sm p-6">
-            <View className="items-center mb-4">
-              <XCircle size={48} color="#dc2626" />
-            </View>
-            <Text className="text-xl font-bold text-gray-900 text-center mb-2">{alert.title}</Text>
-            <Text className="text-gray-500 text-center mb-6">{alert.message}</Text>
-            <TouchableOpacity onPress={() => setAlert(defaultAlert)} className="py-3 rounded-xl bg-blue-600 items-center">
-              <Text className="text-white font-semibold">OK</Text>
+        <View style={{ flex: 1, backgroundColor: 'rgba(0, 0, 0, 0.5)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 16 }}>
+          <View style={{ backgroundColor: '#FFFFFF', borderRadius: 16, width: '100%', maxWidth: 320, padding: 24, shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.15, shadowRadius: 12, elevation: 8, alignItems: 'center' }}>
+            <XCircle size={48} color="#DC2626" style={{ marginBottom: 16 }} />
+            <Text style={{ fontSize: 16, fontWeight: '700', color: '#111827', marginBottom: 8, textAlign: 'center' }}>{alert.title}</Text>
+            <Text style={{ fontSize: 14, color: '#6B7280', marginBottom: 24, textAlign: 'center' }}>{alert.message}</Text>
+            <TouchableOpacity 
+              onPress={() => setAlert(defaultAlert)} 
+              style={{ paddingVertical: 12, paddingHorizontal: 32, borderRadius: 8, backgroundColor: '#2563EB', width: '100%', alignItems: 'center' }}
+            >
+              <Text style={{ color: '#FFFFFF', fontWeight: '700', fontSize: 14 }}>OK</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -210,3 +335,4 @@ export default function AddFundsScreen() {
     </ScrollView>
   );
 }
+

@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { View, Text, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import React, { useEffect } from 'react';
+import { ActivityIndicator, ScrollView, Text, TouchableOpacity, View } from 'react-native';
 import { useGetCategoriesQuery } from '../../store/api/accounts.api';
 
 interface CategoryTabsProps {
@@ -96,16 +96,16 @@ export function CategoryTabs({
 
   if (isLoading) {
     return (
-      <View className="py-4 items-center">
-        <ActivityIndicator color="#2563EB" />
+      <View className="py-2 items-center">
+        <ActivityIndicator color="#2563EB" size="small" />
       </View>
     );
   }
 
   if (categoriesForDisplay.length === 0) {
     return (
-      <View className="py-2 mb-4 items-center">
-        <Text className="text-gray-400 text-sm">No categories available</Text>
+      <View className="py-1 mb-2 items-center">
+        <Text className="text-gray-400 text-xs">No categories available</Text>
       </View>
     );
   }
@@ -119,8 +119,8 @@ export function CategoryTabs({
   })();
 
   return (
-    <View className="mb-4 border-b border-gray-100 pb-2">
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-2 px-1">
+    <View className="mb-2 border-b border-gray-100 pb-1">
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-1.5 px-0.5">
         {categoriesForDisplay.map((cat) => {
           const isActive = visibleActiveLabel === cat;
           return (
@@ -134,13 +134,12 @@ export function CategoryTabs({
                   onCategoryChange(cat);
                 }
               }}
-              className={`px-4 py-2 rounded-full border ${
-                isActive 
-                  ? 'bg-blue-100 border-blue-200' 
+              className={`px-2.5 py-1 rounded-full border ${isActive
+                  ? 'bg-blue-100 border-blue-200'
                   : 'bg-white border-gray-200'
-              }`}
+                }`}
             >
-              <Text className={`text-sm ${isActive ? 'text-blue-600 font-bold' : 'text-gray-600'}`}>
+              <Text className={`text-xs ${isActive ? 'text-blue-600 font-semibold' : 'text-gray-600'}`}>
                 {cat}
               </Text>
             </TouchableOpacity>

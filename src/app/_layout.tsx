@@ -6,6 +6,7 @@ import { store } from '../store/store';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { View, ActivityIndicator } from 'react-native';
+import { CurrencyProvider } from '../context/CurrencyContext';
 
 function RootLayoutNav() {
   const router = useRouter();
@@ -51,7 +52,9 @@ function RootLayoutNav() {
 export default function RootLayout() {
   return (
     <Provider store={store}>
-      <RootLayoutNav />
+      <CurrencyProvider>
+        <RootLayoutNav />
+      </CurrencyProvider>
     </Provider>
   );
 }

@@ -92,7 +92,7 @@ export default function TransactionsScreen() {
   };
 
   return (
-    <View className="flex-1 bg-gray-50 p-4">
+    <View className="flex-1 bg-gray-50 pt-14 px-4">
       <View className="mb-6 flex-row justify-between items-center">
         <View>
           <Text className="text-2xl font-bold text-gray-900">Transactions</Text>
@@ -111,7 +111,7 @@ export default function TransactionsScreen() {
           keyExtractor={(item) => item.id}
           renderItem={renderTransaction}
           showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ flexGrow: 1, paddingBottom: 16 }}
+          contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }}
           ListEmptyComponent={renderEmpty}
           ListFooterComponent={renderFooter}
           onEndReached={handleLoadMore}

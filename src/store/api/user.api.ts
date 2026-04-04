@@ -30,6 +30,25 @@ export const userApi = baseApi.injectEndpoints({
       }),
       invalidatesTags: ['User'],
     }),
+    getNotifications: builder.query<any, void>({
+      query: () => '/notifications',
+      providesTags: ['Notifications'] as any,
+    }),
+    markNotificationRead: builder.mutation<any, string>({
+      query: (id) => ({
+        url: `/notifications/${id}`,
+        method: 'PATCH',
+        body: { read: true },
+      }),
+      invalidatesTags: ['Notifications'] as any,
+    }),
+    markAllNotificationsRead: builder.mutation<any, void>({
+      query: () => ({
+        url: '/notifications/mark-all-read',
+        method: 'POST',
+      }),
+      invalidatesTags: ['Notifications'] as any,
+    }),
   }),
   overrideExisting: false,
 });
@@ -41,4 +60,7 @@ export const {
   useGetReferralsQuery,
   useGetWithdrawalsQuery,
   useRequestWithdrawalMutation,
+  useGetNotificationsQuery,
+  useMarkNotificationReadMutation,
+  useMarkAllNotificationsReadMutation,
 } = userApi;
